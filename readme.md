@@ -25,9 +25,6 @@ docker-compose build
 docker-compose up -d
 ```
 ```shell
-docker exec greenatom-api alembic revision --autogenerate -m "first commit"
-```
-```shell
 docker exec greenatom-api alembic upgrade head
 ```
 
