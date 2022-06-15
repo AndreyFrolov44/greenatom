@@ -5,16 +5,17 @@ from typing import List
 from fastapi import UploadFile, HTTPException, status, Response
 from minio import Minio
 
-from .base import BaseService
 from db.inbox import inbox
 from models.inbox import Inbox
+from models.user import User
 from core.config import settings
 from .request import RequestService
+from .base import BaseService
 
 
 class InboxService(BaseService):
 
-    async def create(self, files: List[UploadFile], requests: RequestService) -> List[Inbox]:
+    async def create(self, files: List[UploadFile], requests: RequestService, user: User) -> List[Inbox]:
         if not 1 <= len(files) <= 15:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -41,7 +42,7 @@ class InboxService(BaseService):
             if not file.content_type == "image/jpeg":
                 continue
             if not req:
-                req = await requests.create()
+                req = await requests.create(user)
 
             file_name = f'{uuid.uuid4()}.jpg'
             bytes_file = await file.read()
@@ -61,15 +62,25 @@ class InboxService(BaseService):
             res.append(cur)
         return res
 
+    async def get_file(self, request_code: int, requests: RequestService, user: User) -> List[Inbox]:
+        req = await requests.get_by_id(request_code)
+        if not req:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Неверный код запроса")
+        if req.user_id != user.id:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="У вас нет доступа к данному запросу")
+        return await self.get_by_request_code(request_code)
+
     async def get_by_request_code(self, request_code: int) -> List[Inbox]:
         query = inbox.select().where(inbox.c.request_code == request_code)
         inbox_list = await self.database.fetch_all(query)
         return list(map(lambda val: Inbox.parse_obj(val), inbox_list))
 
-    async def delete(self, request_code: int, requests: RequestService) -> Response:
+    async def delete(self, request_code: int, requests: RequestService, user: User) -> Response:
         req = await requests.get_by_id(request_code)
         if not req:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Неверный код запроса")
+        if req.user_id != user.id:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="У вас нет доступа к данному запросу")
 
         inboxes = await self.get_by_request_code(request_code)
 

@@ -10,8 +10,10 @@ class Settings(BaseSettings):
 
     MINIO_ROOT_USER: str
     MINIO_ROOT_PASSWORD: str
-    # ACCESS_KEY: str
-    # SECRET_KEY: str
+
+    SECRET_KEY: str
+    ALGORITHM: str
+    ACCESS_TOKEN_EXPIRE_MINUTES: int
 
     class Config:
         env_file = ".env"

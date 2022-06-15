@@ -3,14 +3,18 @@ from typing import List, Optional
 from .base import BaseService
 from db.request import request
 from models.request import Request
+from models.user import User
 
 
 class RequestService(BaseService):
 
-    async def create(self) -> Request:
-        req = Request()
+    async def create(self, user: User) -> Request:
+        req = Request(
+            user_id=user.id
+        )
 
-        values = {}
+        values = {**req.dict()}
+        values.pop("id", None)
         query = request.insert().values(**values)
         req.id = await self.database.execute(query)
 
