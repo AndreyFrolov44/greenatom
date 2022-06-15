@@ -4,5 +4,6 @@ __pycache__
 .database
 versions
 .pytest_cache
+tests/images
 
 .env
