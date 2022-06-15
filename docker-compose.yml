@@ -9,7 +9,7 @@ services:
     ports:
       - 5432:5432
     volumes:
-      - ./.database/postgres/data:/var/lib/postgresql/greenatom/
+      - ./.database/postgres/data:/var/lib/postgresql/data/
 
   pgadmin:
     container_name: pgadmin-greenatom
@@ -28,9 +28,25 @@ services:
     env_file:
       - .env
     volumes:
-      - .:/usr/src/app
+      - .:/app
     ports:
       - 8000:8000
+    command: uvicorn main:app --reload --host 0.0.0.0
     restart: on-failure
     depends_on:
       - db
+      - minio
+
+  minio:
+    restart: always
+    image: minio/minio
+    command: server /data --console-address ":9001"
+    ports:
+      - 9000:9000
+      - 9001:9001
+    env_file: .env
+    volumes:
+      - minio-storage:/data
+
+volumes:
+  minio-storage:
