@@ -2,8 +2,6 @@ venv
 .idea
 __pycache__
 .database
-versions
 .pytest_cache
-tests/images
 
 .env
