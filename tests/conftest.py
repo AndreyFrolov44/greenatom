@@ -1,21 +1,14 @@
 import pytest
 import os
-import asyncio
 
 from sqlalchemy_utils import drop_database, database_exists, create_database
 from alembic.config import Config, command
 from fastapi.testclient import TestClient
 
-
-
-
 os.environ["TESTING"] = 'True'
 
 from db.base import TEST_SQLALCHEMY_DATABASE_URL, database
 from main import app
-from core.security import create_access_token
-from services.user import UserService
-from models.user import UserIn
 
 
 @pytest.fixture(autouse=True, scope="session")
@@ -24,9 +17,10 @@ def test_app():
         create_database(TEST_SQLALCHEMY_DATABASE_URL)
     base_dir = os.path.dirname(os.path.dirname(__file__))
     alembic_cfg = Config(os.path.join(base_dir, "alembic.ini"))
-    command.upgrade(alembic_cfg, "head")
-
-    # create_user(test_client)
+    try:
+        command.upgrade(alembic_cfg, "head")
+    except:
+        pass
 
     try:
         yield TEST_SQLALCHEMY_DATABASE_URL
