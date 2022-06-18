@@ -1,5 +1,6 @@
 import datetime
 import uuid
+import urllib3
 
 from typing import List
 from fastapi import UploadFile, HTTPException, status, Response
@@ -14,6 +15,14 @@ from .base import BaseService
 
 
 class InboxService(BaseService):
+    def __init__(self, database):
+        super().__init__(database)
+        self.client = Minio(
+            "minio:9000",
+            access_key=settings.MINIO_ROOT_USER,
+            secret_key=settings.MINIO_ROOT_PASSWORD,
+            secure=False
+        )
 
     async def create(self, files: List[UploadFile], requests: RequestService, user: User) -> List[Inbox]:
         if not 1 <= len(files) <= 15:
@@ -24,19 +33,13 @@ class InboxService(BaseService):
 
         req = None
 
-        client = Minio(
-            "minio:9000",
-            access_key=settings.MINIO_ROOT_USER,
-            secret_key=settings.MINIO_ROOT_PASSWORD,
-            secure=False
-        )
         res = []
 
         today = datetime.datetime.now()
 
         bucket_name = today.strftime('%Y%m%d')
-        if not client.bucket_exists(bucket_name):
-            client.make_bucket(bucket_name)
+        if not self.client.bucket_exists(bucket_name):
+            self.client.make_bucket(bucket_name)
 
         for file in files:
             if not file.content_type == "image/jpeg":
@@ -47,7 +50,7 @@ class InboxService(BaseService):
             file_name = f'{uuid.uuid4()}.jpg'
             bytes_file = await file.read()
             await file.seek(0)
-            client.put_object(bucket_name, file_name, file.file, len(bytes_file))
+            self.client.put_object(bucket_name, file_name, file.file, len(bytes_file))
             cur = Inbox(
                 request_code=req.id,
                 file_name=file_name,
@@ -84,17 +87,10 @@ class InboxService(BaseService):
 
         inboxes = await self.get_by_request_code(request_code)
 
-        client = Minio(
-            "minio:9000",
-            access_key=settings.MINIO_ROOT_USER,
-            secret_key=settings.MINIO_ROOT_PASSWORD,
-            secure=False
-        )
-
         bucket_name = inboxes[0].datetime.strftime('%Y%m%d')
 
         for item in inboxes:
-            client.remove_object(bucket_name=bucket_name, object_name=item.file_name)
+            self.client.remove_object(bucket_name=bucket_name, object_name=item.file_name)
 
         await requests.delete(request_code)
         return Response(status_code=status.HTTP_204_NO_CONTENT)
